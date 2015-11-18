@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,14 +24,19 @@ public class AnonUploadController {
     AnonFileRepository files;
 
     @RequestMapping("/files")
+
     public List<AnonFile> getFiles(){
+
         return (List<AnonFile>) files.findAll();
     }
 
     @RequestMapping("/upload")
     public void upload(
             HttpServletResponse response,
-            MultipartFile file) throws IOException {
+            MultipartFile file,
+            boolean isPerm,
+            String comment) throws IOException {
+
         File f = File.createTempFile("file", file.getOriginalFilename(), new File( "public"));
         FileOutputStream fos = new FileOutputStream(f);
         fos.write(file.getBytes());
@@ -38,7 +44,18 @@ public class AnonUploadController {
         AnonFile anonFile = new AnonFile();
         anonFile.originalName= file.getOriginalFilename();
         anonFile.name = f.getName();
+        anonFile.isPerm = isPerm;
+        anonFile.comment = comment;
+
         files.save(anonFile);
+
+        if (files.findAllByIsPerm(false).size() > 5) {
+            List<AnonFile> limitList = (List<AnonFile>) files.findAllByIsPerm(false);
+                AnonFile deleteFile = limitList.get(0);
+                    File tempFolderFile = new File("public", deleteFile.name);
+                    files.delete(deleteFile);
+                    tempFolderFile.delete();
+        }
 
         response.sendRedirect("/");
     }
